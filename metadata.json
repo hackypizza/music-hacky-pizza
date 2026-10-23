@@ -1,0 +1,6 @@
+{
+  "name": "Hacky Pizza Town - Retro Ambient Jukebox",
+  "description": "Retro 90s Indian pizza cafe ambient jukebox with spinning cassette deck and invisible YouTube audio engine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
