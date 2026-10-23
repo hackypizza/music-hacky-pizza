@@ -66,7 +66,7 @@ export default function PlayerControls({
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto bg-[#000000]/85 border-2 border-[#5B0E14] backdrop-blur-md rounded-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_25px_rgba(91,14,20,0.3)] hover-glow-cream">
+    <div className="w-full max-w-2xl mx-auto bg-gradient-to-b from-[#5B0E14]/35 via-[#000000]/95 to-[#5B0E14]/20 border-2 border-[#5B0E14] hover:border-[#f1e194] backdrop-blur-xl rounded-2xl p-5 shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_25px_rgba(241,225,148,0.2)] transition-all duration-300">
       {/* Now Playing Header Block */}
       <div className="mb-4 pb-3 border-b border-[#5B0E14]/70 flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
@@ -79,18 +79,29 @@ export default function PlayerControls({
               <span className={`w-1 rounded-full bg-[#f1e194] ${isPlaying ? 'wave-bar-4' : 'h-1'}`} />
             </div>
 
-            <span className="text-[10px] font-mono font-bold tracking-widest uppercase text-[#f1e194]">
-              Abhi Baj Raha Hai: {currentSong?.category || 'Lo-Fi Cafe'} · {isPlaying ? 'PLAYING' : 'PAUSED'}
+            <span className="text-[10px] font-mono font-bold tracking-widest uppercase text-[#f1e194] flex items-center gap-1.5">
+              <span>Abhi Baj Raha Hai: {currentSong?.category || 'Lo-Fi Cafe'} · {isPlaying ? 'PLAYING' : 'PAUSED'}</span>
+              {isPlaying && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#f1e194] shadow-[0_0_6px_#f1e194] animate-ping" />
+              )}
             </span>
           </div>
 
-          {/* Primary Legible Track Title in Pure White #ffffff */}
-          <div className="font-cinzel font-bold text-base sm:text-lg md:text-xl text-[#ffffff] truncate tracking-wide leading-tight">
-            {currentSong ? currentSong.title : 'Koi gaana select nahi hai'}
+          {/* Primary Legible Track Title in Pure White #ffffff with golden glow accent when active */}
+          <div className="font-cinzel font-bold text-base sm:text-lg md:text-xl text-[#ffffff] truncate tracking-wide leading-tight flex items-center gap-2">
+            <span
+              className={
+                isPlaying
+                  ? 'text-[#ffffff] drop-shadow-[0_0_12px_rgba(241,225,148,0.65)]'
+                  : 'text-[#ffffff]/90'
+              }
+            >
+              {currentSong ? currentSong.title : 'Koi gaana select nahi hai'}
+            </span>
           </div>
           {/* Artist in Warm Cream #f1e194 */}
-          <div className="text-xs font-mono text-[#f1e194]/80 truncate mt-0.5">
-            {currentSong ? currentSong.artist : 'List se koi gaana chunein ya naya add karein'}
+          <div className="text-xs font-mono text-[#f1e194]/85 truncate mt-0.5 flex items-center gap-1.5">
+            <span>{currentSong ? currentSong.artist : 'List se koi gaana chunein ya naya add karein'}</span>
           </div>
         </div>
 

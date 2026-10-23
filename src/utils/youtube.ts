@@ -82,6 +82,33 @@ export function getYouTubeThumbnail(videoId: string): string {
   return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 }
 
+/**
+ * Fetches YouTube video title and author/channel name using CORS-friendly oEmbed.
+ */
+export async function fetchYouTubeVideoMetadata(
+  videoId: string
+): Promise<{ title: string; author: string } | null> {
+  if (!videoId) return null;
+  try {
+    const res = await fetch(
+      `https://noembed.com/embed?url=${encodeURIComponent(
+        `https://www.youtube.com/watch?v=${videoId}`
+      )}`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && data.title) {
+      return {
+        title: cleanYouTubeTitle(data.title),
+        author: data.author_name || '',
+      };
+    }
+  } catch {
+    // Ignore network/CORS error
+  }
+  return null;
+}
+
 export function formatTime(seconds: number): string {
   if (isNaN(seconds) || seconds < 0) return '00:00';
   const mins = Math.floor(seconds / 60);

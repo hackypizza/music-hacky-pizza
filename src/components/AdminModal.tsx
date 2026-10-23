@@ -22,12 +22,15 @@ import {
   ArrowRightLeft,
   ListPlus,
   Loader2,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Song } from '../types';
 import {
   extractYouTubeId,
   extractPlaylistId,
   fetchYouTubePlaylistVideos,
+  fetchYouTubeVideoMetadata,
   getYouTubeThumbnail,
 } from '../utils/youtube';
 import {
@@ -124,6 +127,48 @@ export default function AdminModal({
 
   // Extracted YouTube ID
   const extractedId = extractYouTubeId(youtubeUrl);
+  const [isFetchingMeta, setIsFetchingMeta] = useState<boolean>(false);
+  const [isBulkSectionOpen, setIsBulkSectionOpen] = useState<boolean>(false);
+
+  // Auto-fetch YouTube song title & artist from video ID
+  const handleAutoFetchMeta = async (idToFetch: string) => {
+    if (!idToFetch) return;
+    setIsFetchingMeta(true);
+    try {
+      const meta = await fetchYouTubeVideoMetadata(idToFetch);
+      if (meta) {
+        if (meta.title && (!title || title.trim() === '')) {
+          setTitle(meta.title);
+        }
+        if (meta.author && (!artist || artist.trim() === '')) {
+          setArtist(meta.author);
+        }
+      }
+    } catch {
+      // Ignore network errors
+    } finally {
+      setIsFetchingMeta(false);
+    }
+  };
+
+  // Keep input fully editable: If a full URL is pasted, auto-fill the 11-char ID and auto-fetch metadata
+  const handleYoutubeInputChange = (val: string) => {
+    setYoutubeUrl(val);
+    const trimmed = val.trim();
+    if (trimmed.includes('http') || trimmed.includes('youtu')) {
+      const id = extractYouTubeId(trimmed);
+      if (id) {
+        // Auto-fill the 11-char ID into the input so it's clean and directly editable!
+        setYoutubeUrl(id);
+        handleAutoFetchMeta(id);
+      }
+    } else if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+      // Direct 11-char ID typed or pasted
+      if (!title || !artist) {
+        handleAutoFetchMeta(trimmed);
+      }
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -639,20 +684,102 @@ export default function AdminModal({
                       </span>
                     </div>
 
-                    {/* Quick Shortcut Card to Bulk Import */}
-                    <div className="mb-4 p-3 bg-[#5B0E14]/25 border border-[#5B0E14] hover:border-[#f1e194]/60 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono transition-colors">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-[#f1e194] shrink-0" />
-                        <span className="text-[#ffffff]">Poori YouTube Playlist ek saath import karni hai?</span>
-                      </div>
+                    {/* Collapsible Bulk YouTube Playlist Import Section */}
+                    <div className="mb-4 bg-gradient-to-r from-[#5B0E14]/30 via-[#000000]/90 to-[#5B0E14]/30 border border-[#5B0E14] hover:border-[#f1e194]/60 rounded-xl overflow-hidden transition-all shadow-md">
                       <button
                         type="button"
-                        onClick={() => setActiveTab('bulk-import')}
-                        className="px-3 py-1 bg-[#5B0E14] hover:bg-[#78131a] text-[#f1e194] border border-[#f1e194]/40 rounded-lg text-[11px] font-bold whitespace-nowrap self-start sm:self-auto flex items-center gap-1.5"
+                        onClick={() => setIsBulkSectionOpen(!isBulkSectionOpen)}
+                        className="w-full p-3 flex items-center justify-between text-xs font-mono text-left hover:bg-[#5B0E14]/20 transition-colors"
                       >
-                        <ListPlus className="w-3.5 h-3.5" />
-                        <span>Bulk Import Kholein 🍕</span>
+                        <div className="flex items-center gap-2">
+                          <ListPlus className="w-4 h-4 text-[#f1e194] shrink-0" />
+                          <span className="text-[#ffffff] font-bold">Bulk YouTube Playlist Import 🍕</span>
+                          <span className="text-[10px] text-[#f1e194]/80 hidden sm:inline">(Poori playlist ek click me import karein)</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[#f1e194] text-[11px] font-bold">
+                          <span>{isBulkSectionOpen ? 'Band Karein' : 'Kholein'}</span>
+                          {isBulkSectionOpen ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </div>
                       </button>
+
+                      {isBulkSectionOpen && (
+                        <div className="p-4 border-t border-[#5B0E14]/60 bg-[#000000]/70 space-y-3">
+                          <div>
+                            <label className="block text-[11px] font-mono text-[#f1e194] mb-1 uppercase">
+                              YouTube Playlist Link *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="https://www.youtube.com/playlist?list=PL..."
+                              value={bulkPlaylistUrl}
+                              onChange={(e) => setBulkPlaylistUrl(e.target.value)}
+                              className="w-full bg-[#000000] border border-[#5B0E14] focus:border-[#f1e194] rounded-xl px-3.5 py-2.5 text-xs font-mono text-[#ffffff] outline-none"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+                            <div>
+                              <label className="block text-[11px] font-mono text-[#f1e194] mb-1 uppercase">
+                                Target Playlist / Mood Category *
+                              </label>
+                              <select
+                                value={isBulkCustomCategory ? '__CUSTOM__' : bulkCategory}
+                                onChange={(e) => {
+                                  if (e.target.value === '__CUSTOM__') {
+                                    setIsBulkCustomCategory(true);
+                                  } else {
+                                    setIsBulkCustomCategory(false);
+                                    setBulkCategory(e.target.value);
+                                  }
+                                }}
+                                className="w-full bg-[#000000] border border-[#5B0E14] focus:border-[#f1e194] rounded-xl px-3.5 py-2.5 text-xs font-mono text-[#ffffff] outline-none"
+                              >
+                                {categories.map((cat) => (
+                                  <option key={cat} value={cat}>
+                                    {cat}
+                                  </option>
+                                ))}
+                                <option value="__CUSTOM__">+ Nayi Category Banayein...</option>
+                              </select>
+                            </div>
+
+                            {isBulkCustomCategory && (
+                              <div>
+                                <input
+                                  type="text"
+                                  placeholder="Nayi category ka naam"
+                                  value={bulkCustomCategory}
+                                  onChange={(e) => setBulkCustomCategory(e.target.value)}
+                                  className="w-full bg-[#000000] border border-[#5B0E14] focus:border-[#f1e194] rounded-xl px-3.5 py-2.5 text-xs font-mono text-[#ffffff] outline-none"
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleBulkPlaylistImport(e as unknown as React.FormEvent)}
+                            disabled={isBulkImporting || !bulkPlaylistUrl.trim()}
+                            className="w-full py-2.5 bg-[#5B0E14] hover:bg-[#78131a] border border-[#f1e194] text-[#ffffff] font-cinzel font-bold text-xs rounded-xl transition-all shadow disabled:opacity-40 flex items-center justify-center gap-2"
+                          >
+                            {isBulkImporting ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin text-[#f1e194]" />
+                                <span>Import Ho Raha Hai...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-4 h-4 text-[#f1e194]" />
+                                <span>Saare Gaane Is Playlist Me Jodein 🍕</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <form onSubmit={handleAddSong} className="space-y-4">
@@ -686,18 +813,44 @@ export default function AdminModal({
                         </div>
                       </div>
 
-                      {/* YouTube URL with live parsing */}
+                      {/* YouTube Video ID or Full Link with live parsing, auto-fill, and manual editing */}
                       <div>
-                        <label className="block text-[11px] font-mono text-[#f1e194] mb-1 uppercase">
-                          YouTube Link Paste Karein *
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[11px] font-mono text-[#f1e194] uppercase">
+                            YouTube Video ID ya Full Link *
+                          </label>
+                          {extractedId && (
+                            <button
+                              type="button"
+                              onClick={() => handleAutoFetchMeta(extractedId)}
+                              disabled={isFetchingMeta}
+                              className="text-[10px] font-mono text-[#f1e194] hover:text-[#ffffff] flex items-center gap-1 underline transition-colors disabled:opacity-50"
+                            >
+                              {isFetchingMeta ? (
+                                <>
+                                  <Loader2 className="w-3 h-3 animate-spin text-[#f1e194]" />
+                                  <span>Metadata Fetching...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="w-3 h-3 text-[#f1e194]" />
+                                  <span>Auto-Fetch Title &amp; Artist</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+
                         <input
                           type="text"
-                          placeholder="https://www.youtube.com/watch?v=..."
+                          placeholder="11-char ID (jaise: dQw4w9WgXcQ) ya Poora YouTube Link"
                           value={youtubeUrl}
-                          onChange={(e) => setYoutubeUrl(e.target.value)}
+                          onChange={(e) => handleYoutubeInputChange(e.target.value)}
                           className="w-full bg-[#000000] border border-[#5B0E14] focus:border-[#f1e194] rounded-xl px-3.5 py-2.5 text-xs font-mono text-[#ffffff] placeholder:text-[#ffffff]/40 outline-none"
                         />
+                        <p className="text-[10px] text-[#ffffff]/60 font-mono mt-1">
+                          Full URL paste karne par 11-akshar ka ID auto-fill hoga aur metadata fetch ho jayega. Aap is ID ko manually type ya edit bhi kar sakte hain.
+                        </p>
 
                         {/* Parser Status Preview */}
                         {youtubeUrl.trim() && (
@@ -721,7 +874,9 @@ export default function AdminModal({
                                     </code>
                                   </div>
                                   <p className="text-[10px] text-[#ffffff]/60 font-mono mt-0.5">
-                                    Supabase me save karne ke liye ready hai
+                                    {isFetchingMeta
+                                      ? 'YouTube se metadata fetch ho raha hai...'
+                                      : 'ID valid hai aur editable hai — Supabase me save hone ke liye ready.'}
                                   </p>
                                 </div>
                               </>

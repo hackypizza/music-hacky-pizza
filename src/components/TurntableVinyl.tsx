@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { Song } from '../types';
-import { Disc3, Radio, Flame, Sparkles, Volume2 } from 'lucide-react';
+import { Disc3, Radio, Flame, Sparkles } from 'lucide-react';
 
 interface TurntableVinylProps {
   currentSong: Song | null;
@@ -40,7 +40,7 @@ export default function TurntableVinyl({
     prevSongIdRef.current = currentSong?.id;
   }, [isPlaying, currentSong?.id]);
 
-  // Smooth continuous rotation with physics-based deceleration on pause/stop
+  // Smooth continuous rotation with physics momentum deceleration on pause/stop
   const currentRotationRef = useRef<number>(0);
   const angularVelocityRef = useRef<number>(0);
   const pizzaDiscRef = useRef<HTMLDivElement>(null);
@@ -61,7 +61,7 @@ export default function TurntableVinyl({
         angularVelocityRef.current +=
           (TARGET_ROTATION_SPEED - angularVelocityRef.current) * 0.08 * delta;
       } else {
-        // Smoothly decelerate to a halt (gradual ease-out over ~800ms)
+        // Smoothly decelerate to a halt (gradual momentum ease-out over ~800ms)
         angularVelocityRef.current *= Math.pow(0.94, delta);
         if (angularVelocityRef.current < 0.005) {
           angularVelocityRef.current = 0;
@@ -105,15 +105,15 @@ export default function TurntableVinyl({
   }, [isPlaying]);
 
   // Tonearm tracking calculation:
-  // Rest angle = 0deg (off record)
-  // Playing angle = 22deg (outer crust rim) to 29deg (near center label)
+  // Rest angle = 0deg (off record, needle lifted)
+  // Playing angle = 22deg (outer crust rim) to 29deg (near center label), needle rested on vinyl
   const progressRatio = duration > 0 ? Math.min(1, Math.max(0, currentTime / duration)) : 0;
   const tonearmAngle = isPlaying ? 22 + progressRatio * 7 : 0;
 
   return (
     <div className="w-full max-w-2xl mx-auto select-none">
       {/* Top Deck Banner: Wood-Fired Oven & Live Jukebox Status */}
-      <div className="bg-[#000000]/90 border-t-2 border-x-2 border-[#5B0E14] rounded-t-2xl px-4 sm:px-5 py-2.5 shadow-2xl flex flex-wrap items-center justify-between gap-3 backdrop-blur-md">
+      <div className="bg-gradient-to-r from-[#5B0E14]/40 via-[#000000]/95 to-[#5B0E14]/40 border-t-2 border-x-2 border-[#5B0E14] rounded-t-2xl px-4 sm:px-5 py-2.5 shadow-2xl flex flex-wrap items-center justify-between gap-3 backdrop-blur-md">
         {/* Live Oven Indicator */}
         <div className="flex items-center gap-2.5">
           <span className="relative flex h-3 w-3">
@@ -125,19 +125,19 @@ export default function TurntableVinyl({
             <span
               className={`relative inline-flex rounded-full h-3 w-3 ${
                 isPlaying
-                  ? 'bg-[#f1e194] shadow-[0_0_10px_#f1e194]'
+                  ? 'bg-[#f1e194] shadow-[0_0_12px_#f1e194]'
                   : 'bg-[#5B0E14] border border-[#f1e194]/40'
               }`}
             />
           </span>
-          <span className="text-[10px] sm:text-[11px] font-mono font-bold tracking-wider text-[#f1e194] uppercase flex items-center gap-1.5">
-            <Flame className="w-3.5 h-3.5 text-[#f1e194]" />
+          <span className="text-[10px] sm:text-[11px] font-mono font-bold tracking-wider text-[#f1e194] uppercase flex items-center gap-1.5 drop-shadow-[0_0_8px_rgba(241,225,148,0.4)]">
+            <Flame className="w-3.5 h-3.5 text-[#f1e194] animate-pulse" />
             <span>KITCHEN COUNTER / LIVE JUKEBOX</span>
           </span>
         </div>
 
         {/* 33 RPM Speed Light Indicator */}
-        <div className="flex items-center gap-2 bg-[#000000] px-3 py-1 rounded-md border border-[#5B0E14]/80">
+        <div className="flex items-center gap-2 bg-[#000000]/90 px-3 py-1 rounded-md border border-[#5B0E14]/80 shadow-inner">
           <span className="text-[9px] sm:text-[10px] font-mono text-[#ffffff]/70">SPEED</span>
           <span className="text-xs font-mono font-bold text-[#f1e194]">33⅓ RPM</span>
           <span
@@ -148,8 +148,8 @@ export default function TurntableVinyl({
         </div>
       </div>
 
-      {/* Main Turntable Chassis */}
-      <div className="relative bg-[#000000]/95 border-2 border-[#5B0E14] rounded-b-2xl p-4 sm:p-6 shadow-[0_25px_60px_rgba(0,0,0,0.95),0_0_30px_rgba(91,14,20,0.4)] backdrop-blur-lg overflow-hidden">
+      {/* Main Turntable Chassis with Deep Rustic Burgundy Glassmorphism & Golden Neon Glow */}
+      <div className="relative bg-gradient-to-b from-[#5B0E14]/30 via-[#000000]/95 to-[#5B0E14]/20 border-2 border-[#5B0E14] hover:border-[#f1e194] rounded-b-2xl p-4 sm:p-6 shadow-[0_25px_60px_rgba(0,0,0,0.95),0_0_25px_rgba(241,225,148,0.2)] backdrop-blur-xl transition-all duration-300 overflow-hidden">
         {/* Brass Vintage Screws at 4 corners */}
         <div className="absolute top-3 left-3 w-3 h-3 rounded-full bg-[#1c0507] border border-[#5B0E14] flex items-center justify-center shadow">
           <div className="w-2 h-0.5 bg-[#f1e194]/60" />
@@ -170,7 +170,7 @@ export default function TurntableVinyl({
               PIZZA VINYL PLATTER CONTAINER
              ======================================================== */}
           <div className="relative flex flex-col items-center justify-center p-2">
-            {/* Hot Fresh Rising Steam Clouds Layer (Active when playing) */}
+            {/* Hot Fresh Rising Steam Clouds Layer (Billowing when playing, evaporating out when paused) */}
             <div
               className={`absolute -top-12 sm:-top-16 left-1/2 -translate-x-1/2 w-48 sm:w-64 h-28 pointer-events-none z-30 transition-opacity duration-700 ${
                 isPlaying ? 'opacity-100' : 'opacity-0'
@@ -239,7 +239,7 @@ export default function TurntableVinyl({
                 style={{ willChange: 'transform' }}
                 className="relative w-full h-full rounded-full cursor-pointer overflow-hidden shadow-[inset_0_0_25px_rgba(0,0,0,0.9)] group"
               >
-                {/* 1. Artisanal Wood-Fired Crust Base (Golden-amber rim with charred blistering) */}
+                {/* 1. Artisanal Wood-Fired Crust Base (Golden-baked rim with charred blistering) */}
                 <svg
                   className="w-full h-full"
                   viewBox="0 0 200 200"
@@ -247,11 +247,12 @@ export default function TurntableVinyl({
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <defs>
-                    {/* Crust Outer Gradient */}
+                    {/* Crispy Golden-Baked Crust Gradient */}
                     <radialGradient id="crustGradient" cx="50%" cy="50%" r="50%">
-                      <stop offset="68%" stopColor="#78350f" />
-                      <stop offset="82%" stopColor="#b45309" />
-                      <stop offset="92%" stopColor="#d97706" />
+                      <stop offset="66%" stopColor="#78350f" />
+                      <stop offset="78%" stopColor="#b45309" />
+                      <stop offset="88%" stopColor="#d97706" />
+                      <stop offset="95%" stopColor="#f59e0b" />
                       <stop offset="98%" stopColor="#5B0E14" />
                       <stop offset="100%" stopColor="#1c0507" />
                     </radialGradient>
@@ -334,6 +335,7 @@ export default function TurntableVinyl({
 
                   {/* ========================================================
                       DYNAMIC TOPPINGS (Drop & Bounce In Animation)
+                      Includes: Pepperoni, Fresh Basil, Sliced Mushrooms, Black Olives
                      ======================================================== */}
                   <g key={toppingDropKey}>
                     {/* Pepperoni Medallion 1 (Top Left) */}
@@ -404,6 +406,57 @@ export default function TurntableVinyl({
                       <path d="M2 1 L14 4" stroke="#86efac" strokeWidth="0.7" />
                     </g>
 
+                    {/* Sliced Button Mushroom 1 (Top Center-Right) */}
+                    <g className="topping-drop-3" transform="translate(120, 42) rotate(22)">
+                      <path
+                        d="M-8 0 C-8 -8 8 -8 8 0 C5 3 2 4 0 4 C-2 4 -5 3 -8 0 Z"
+                        fill="#f5efe6"
+                        stroke="#d6c7b2"
+                        strokeWidth="0.9"
+                      />
+                      <path d="M-6 0 C-3 2 3 2 6 0" stroke="#78593a" strokeWidth="1.2" strokeLinecap="round" />
+                      <path
+                        d="M-3 2 L-2 7 C-2 8 2 8 2 7 L3 2 Z"
+                        fill="#ede4d5"
+                        stroke="#d6c7b2"
+                        strokeWidth="0.8"
+                      />
+                    </g>
+
+                    {/* Sliced Button Mushroom 2 (Bottom Left-Center) */}
+                    <g className="topping-drop-4" transform="translate(76, 154) rotate(-32)">
+                      <path
+                        d="M-8 0 C-8 -8 8 -8 8 0 C5 3 2 4 0 4 C-2 4 -5 3 -8 0 Z"
+                        fill="#f5efe6"
+                        stroke="#d6c7b2"
+                        strokeWidth="0.9"
+                      />
+                      <path d="M-6 0 C-3 2 3 2 6 0" stroke="#78593a" strokeWidth="1.2" strokeLinecap="round" />
+                      <path
+                        d="M-3 2 L-2 7 C-2 8 2 8 2 7 L3 2 Z"
+                        fill="#ede4d5"
+                        stroke="#d6c7b2"
+                        strokeWidth="0.8"
+                      />
+                    </g>
+
+                    {/* Sliced Button Mushroom 3 (Right Center) */}
+                    <g className="topping-drop-6" transform="translate(156, 120) rotate(52)">
+                      <path
+                        d="M-7 0 C-7 -7 7 -7 7 0 C4 2.5 1.5 3.5 0 3.5 C-1.5 3.5 -4 2.5 -7 0 Z"
+                        fill="#f5efe6"
+                        stroke="#d6c7b2"
+                        strokeWidth="0.9"
+                      />
+                      <path d="M-5 0 C-2 1.8 2 1.8 5 0" stroke="#78593a" strokeWidth="1.1" strokeLinecap="round" />
+                      <path
+                        d="M-2.5 2 L-1.8 6.5 C-1.8 7.5 1.8 7.5 1.8 6.5 L2.5 2 Z"
+                        fill="#ede4d5"
+                        stroke="#d6c7b2"
+                        strokeWidth="0.8"
+                      />
+                    </g>
+
                     {/* Black Olive Ring 1 */}
                     <g className="topping-drop-3" transform="translate(100, 154)">
                       <circle cx="0" cy="0" r="6" fill="#18181b" stroke="#09090b" strokeWidth="1.5" />
@@ -458,7 +511,7 @@ export default function TurntableVinyl({
 
             {/* Turntable Power Switch at Lower Left */}
             <div className="w-full mt-3 flex items-center justify-between px-2 text-[10px] font-mono">
-              <div className="flex items-center gap-1.5 bg-[#000000] px-2.5 py-1 rounded-md border border-[#5B0E14]">
+              <div className="flex items-center gap-1.5 bg-[#000000]/90 px-2.5 py-1 rounded-md border border-[#5B0E14]">
                 <span className="text-[#ffffff]/70 uppercase font-bold">DRIVE:</span>
                 <span
                   className={`w-2 h-2 rounded-full ${
@@ -466,7 +519,7 @@ export default function TurntableVinyl({
                   }`}
                 />
                 <span className="text-[#f1e194] font-bold">
-                  {isPlaying ? 'ROTATING (12s)' : 'STATIONARY'}
+                  {isPlaying ? 'ROTATING (33⅓ RPM)' : 'STATIONARY (PAUSED)'}
                 </span>
               </div>
 
@@ -481,50 +534,62 @@ export default function TurntableVinyl({
               RIGHT SECTION: MECHANICAL TONEARM & AUDIO EQUALIZER
              ======================================================== */}
           <div className="flex-1 w-full flex flex-col justify-between items-center md:items-end min-h-[260px]">
-            {/* Mechanical Chrome Tonearm Assembly */}
-            <div className="relative w-44 h-44 mb-2 hidden md:block">
-              {/* Tonearm Pivot Gimbal and Counterweight in #5B0E14 & Brass */}
-              <div className="absolute top-2 right-4 w-12 h-12 rounded-full bg-gradient-to-br from-[#5B0E14] to-[#1c0507] border-2 border-[#f1e194] shadow-xl flex items-center justify-center z-20">
+            {/* 
+              Mechanical Vintage Phonograph Needle & Tonearm Assembly 
+              Smoothly glides and rests on pizza when playing; lifts up and parks when paused
+            */}
+            <div className="relative w-44 h-48 mb-2 hidden md:block">
+              {/* Tonearm Pivot Gimbal and Heavy Counterweight in #5B0E14, Brass & Copper */}
+              <div className="absolute top-2 right-4 w-12 h-12 rounded-full bg-gradient-to-br from-[#5B0E14] via-[#3b0a0e] to-[#1c0507] border-2 border-[#f1e194] shadow-xl flex items-center justify-center z-20">
                 {/* Brass Center Pivot Screw */}
-                <div className="w-5 h-5 rounded-full bg-[#f1e194] border border-[#ffffff] flex items-center justify-center shadow">
+                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#f1e194] to-[#d97706] border border-[#ffffff] flex items-center justify-center shadow">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#000000]" />
                 </div>
                 {/* Heavy Counterweight Ring */}
                 <div className="absolute -top-3 w-8 h-4 rounded-xs bg-[#240407] border border-[#f1e194]/60 shadow" />
               </div>
 
-              {/* Tonearm Arm Rest Post */}
-              <div className="absolute top-24 right-9 w-3 h-5 bg-[#1c0507] border border-[#5B0E14] rounded-t-xs z-10 flex items-center justify-center">
-                <div className="w-1 h-2 bg-[#f1e194]/70" />
+              {/* Tonearm Arm Rest Cradle Post */}
+              <div className="absolute top-26 right-9 w-3.5 h-6 bg-[#1c0507] border border-[#5B0E14] rounded-t-xs z-10 flex items-center justify-center shadow-inner">
+                <div className="w-1.5 h-2.5 bg-[#f1e194]/80 rounded-xs" />
               </div>
 
-              {/* Rotating Tonearm Wand with Stylus Needle */}
+              {/* 
+                Rotating & Lifting Tonearm Wand with Stylus Needle
+                - When Playing: glides onto pizza (22deg to 29deg) and lowers onto groove (scale(1.02))
+                - When Paused: lifts off vinyl (scale(0.95)) and swings back to rest (0deg)
+              */}
               <div
-                className="absolute top-8 right-10 origin-top-right transition-transform duration-700 ease-in-out z-30"
+                className="absolute top-8 right-10 origin-top-right z-30 transition-all duration-800 cubic-bezier(0.25, 1, 0.5, 1)"
                 style={{
-                  transform: `rotate(${tonearmAngle}deg)`,
+                  transform: `rotate(${tonearmAngle}deg) scale(${isPlaying ? 1.02 : 0.95}) translateZ(0)`,
+                  filter: isPlaying
+                    ? 'drop-shadow(-4px 10px 10px rgba(0,0,0,0.75))'
+                    : 'drop-shadow(-2px 4px 6px rgba(0,0,0,0.45))',
                 }}
               >
-                {/* S-Shaped Curved Chrome Tonearm Tube */}
-                <div className="w-1.5 h-34 bg-gradient-to-b from-[#ffffff] via-[#f1e194] to-[#cbd5e1] rounded-full shadow-md ml-auto" />
+                {/* Curved Chrome & Copper Tonearm Tube */}
+                <div className="w-1.5 h-36 bg-gradient-to-b from-[#ffffff] via-[#f1e194] to-[#94a3b8] rounded-full shadow-md ml-auto" />
 
-                {/* Stylus Cartridge & Headshell at Tip in Deep Wine #5B0E14 */}
-                <div className="relative -ml-3.5 -mt-1 w-8 h-5 bg-[#5B0E14] border border-[#f1e194] rounded-xs shadow-md flex items-center justify-center">
-                  <span className="text-[6px] font-mono font-bold text-[#ffffff]">HI-FI</span>
-                  {/* Glowing Needle Tip */}
+                {/* Vintage Phonograph Cartridge & Headshell at Tip */}
+                <div className="relative -ml-4 -mt-1 w-9 h-5 bg-gradient-to-r from-[#5B0E14] to-[#78131a] border border-[#f1e194] rounded-xs shadow-md flex items-center justify-center">
+                  <span className="text-[6px] font-mono font-bold text-[#ffffff] tracking-wider">
+                    HI-FI
+                  </span>
+                  {/* Glowing Needle Stylus Tip Contact Point */}
                   <div
-                    className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${
+                    className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-1.5 h-2 rounded-b-full transition-all duration-300 ${
                       isPlaying
-                        ? 'bg-[#f1e194] shadow-[0_0_10px_#f1e194]'
-                        : 'bg-[#5B0E14] border border-[#f1e194]/50'
+                        ? 'bg-[#f1e194] shadow-[0_0_12px_#f1e194]'
+                        : 'bg-[#5B0E14] border border-[#f1e194]/40'
                     }`}
                   />
                 </div>
               </div>
             </div>
 
-            {/* Glowing Audio Spectrum Equalizer Waveform Bars */}
-            <div className="w-full bg-[#000000] border border-[#5B0E14] rounded-xl p-3.5 shadow-inner">
+            {/* Glowing Audio Spectrum Equalizer Waveform Bars with Golden Neon Glow */}
+            <div className="w-full bg-[#000000]/90 border border-[#5B0E14] hover:border-[#f1e194]/80 rounded-xl p-3.5 shadow-inner transition-colors">
               <div className="flex items-center justify-between text-[10px] font-mono text-[#f1e194] mb-2">
                 <span className="flex items-center gap-1.5">
                   <Radio className="w-3.5 h-3.5 text-[#f1e194]" />
@@ -570,8 +635,8 @@ export default function TurntableVinyl({
                 <Disc3 className="w-3.5 h-3.5 text-[#f1e194]" />
                 <span className="text-[#f1e194]">DIRECT DRIVE PIZZA DISC</span>
               </span>
-              <span className="text-[#ffffff] font-bold">
-                {isPlaying ? 'STYLUS ENGAGED 🍕' : 'STYLUS PARKED'}
+              <span className="text-[#ffffff] font-bold flex items-center gap-1">
+                <span>{isPlaying ? 'NEEDLE ON GROOVE 🍕' : 'NEEDLE LIFTED'}</span>
               </span>
             </div>
           </div>
