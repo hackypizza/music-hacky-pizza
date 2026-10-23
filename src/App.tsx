@@ -4,24 +4,38 @@ import { INITIAL_PLAYLIST, DEFAULT_CATEGORIES } from './data/initialPlaylist';
 import { ambientSound } from './utils/ambientSound';
 import Header from './components/Header';
 import AnimeBackground from './components/AnimeBackground';
-import TurntableVinyl from './components/TurntableVinyl';
 import PlayerControls from './components/PlayerControls';
 import TapeRackDrawer from './components/TapeRackDrawer';
 import AdminModal from './components/AdminModal';
 import AboutModal from './components/AboutModal';
 import YouTubeEngine from './components/YouTubeEngine';
-import { Sparkles, Database, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  Sparkles,
+  Database,
+  CheckCircle2,
+  AlertCircle,
+  Play,
+  Pause,
+  Plus,
+  Music2,
+  Disc,
+} from 'lucide-react';
 import cafeCounterBg from './assets/images/anime_cafe_counter_1792569343423.jpg';
 import {
   fetchPlaylistFromSupabase,
   deleteCategoryFromSupabase,
   supabase,
 } from './utils/supabase';
+import { getYouTubeThumbnail } from './utils/youtube';
 
 export default function App() {
   // Playlist state (defaults to INITIAL_PLAYLIST until Supabase responds)
   const [songs, setSongs] = useState<Song[]>(INITIAL_PLAYLIST);
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+
+  // Search query & category filter
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<ItalianVibeTag>('All');
 
   // Supabase Sync States
   const [isDbLoading, setIsDbLoading] = useState<boolean>(true);
@@ -37,9 +51,6 @@ export default function App() {
   const [volume, setVolume] = useState<number>(85);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [seekTarget, setSeekTarget] = useState<number | null>(null);
-
-  // Category filter
-  const [selectedCategory, setSelectedCategory] = useState<ItalianVibeTag>('All');
 
   // Ambient sound synthesizer
   const [vinylCrackle, setVinylCrackle] = useState<boolean>(false);
@@ -60,7 +71,7 @@ export default function App() {
     }, 4500);
   }, []);
 
-  // 3. Live Playlist Sync from Supabase on load
+  // 1. Live Playlist Sync from Supabase on load
   const loadSongsFromSupabase = useCallback(async () => {
     setIsDbLoading(true);
     try {
@@ -70,7 +81,6 @@ export default function App() {
         setIsTableMissing(true);
         setIsDbConnected(false);
         setIsTableEmpty(false);
-        // Fallback to cozy lo-fi tracks so music keeps playing smoothly
         setSongs(INITIAL_PLAYLIST);
         showToast('Supabase se jude. Table ready hone tak sample gaane chal rahe hain.');
         return;
@@ -93,23 +103,20 @@ export default function App() {
         );
 
         setCategories((prev) => {
-          // Merge current active categories with dynamically extracted DB categories
           const combined = Array.from(new Set([...prev, ...dbCategories]));
           return combined.length > 0 ? combined : DEFAULT_CATEGORIES;
         });
 
-        // Feed them to the YouTube IFrame player engine and begin playing
         setCurrentIndex(0);
         setCurrentTime(0);
         setIsPlaying(true);
         showToast(`Supabase se ${result.songs.length} gaane load ho gaye! Playback shuru ho gaya.`);
       } else {
-        // Table is empty: display friendly prompt and play fallback lo-fi track
         setIsTableEmpty(true);
         setSongs(INITIAL_PLAYLIST);
         setCurrentIndex(0);
         setCurrentTime(0);
-        setIsPlaying(true); // Fallback lo-fi track playing
+        setIsPlaying(true);
         showToast('Supabase table khali hai: Sample lo-fi gaana chal raha hai.');
       }
     } catch (err: unknown) {
@@ -143,110 +150,99 @@ export default function App() {
         supabase.removeChannel(channel);
       };
     } catch {
-      // Ignore if channels not enabled
+      // Ignore
     }
   }, [loadSongsFromSupabase]);
 
-  // Handle URL hash routing (#admin or /admin)
-  useEffect(() => {
-    const checkRoute = () => {
-      const hash = window.location.hash.toLowerCase();
-      const pathname = window.location.pathname.toLowerCase();
-      if (hash === '#admin' || hash === '#/admin' || pathname === '/admin') {
-        setIsAdminOpen(true);
-      }
-    };
-    checkRoute();
-    window.addEventListener('hashchange', checkRoute);
-    return () => window.removeEventListener('hashchange', checkRoute);
-  }, []);
-
-  // Filtered song list based on active category
-  const activePlaylist = useMemo(() => {
-    if (selectedCategory === 'All') return songs;
-    return songs.filter((s) => s.category === selectedCategory);
-  }, [songs, selectedCategory]);
-
-  const currentSong = songs[currentIndex] || songs[0] || null;
-
-  // Track navigation
+  // Track switching handlers
   const handleNextTrack = useCallback(() => {
     if (songs.length === 0) return;
-    ambientSound.cleanupOnTrackChange();
-    if (activePlaylist.length > 0) {
-      const activeIdx = activePlaylist.findIndex((s) => s.id === currentSong?.id);
-      const nextActive = activePlaylist[(activeIdx + 1) % activePlaylist.length];
-      const nextGlobalIdx = songs.findIndex((s) => s.id === nextActive.id);
-      setCurrentIndex(nextGlobalIdx !== -1 ? nextGlobalIdx : 0);
-    } else {
-      setCurrentIndex((prev) => (prev + 1) % songs.length);
-    }
+    setCurrentIndex((prev) => (prev + 1) % songs.length);
     setCurrentTime(0);
     setIsPlaying(true);
-  }, [songs, activePlaylist, currentSong]);
+  }, [songs.length]);
 
   const handlePrevTrack = useCallback(() => {
     if (songs.length === 0) return;
-    ambientSound.cleanupOnTrackChange();
-    if (activePlaylist.length > 0) {
-      const activeIdx = activePlaylist.findIndex((s) => s.id === currentSong?.id);
-      const prevActive =
-        activePlaylist[(activeIdx - 1 + activePlaylist.length) % activePlaylist.length];
-      const prevGlobalIdx = songs.findIndex((s) => s.id === prevActive.id);
-      setCurrentIndex(prevGlobalIdx !== -1 ? prevGlobalIdx : 0);
-    } else {
-      setCurrentIndex((prev) => (prev - 1 + songs.length) % songs.length);
-    }
+    setCurrentIndex((prev) => (prev - 1 + songs.length) % songs.length);
     setCurrentTime(0);
     setIsPlaying(true);
-  }, [songs, activePlaylist, currentSong]);
+  }, [songs.length]);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = useCallback(() => {
     setIsPlaying((prev) => !prev);
-  };
+  }, []);
 
-  const handleSelectSong = (song: Song) => {
-    ambientSound.cleanupOnTrackChange();
-    const idx = songs.findIndex((s) => s.id === song.id);
-    if (idx !== -1) {
-      setCurrentIndex(idx);
-      setCurrentTime(0);
-      setIsPlaying(true);
-    }
-    setIsTapeRackOpen(false);
-  };
-
-  const handleSeek = (newTime: number) => {
-    setSeekTarget(newTime);
-    setCurrentTime(newTime);
-    setTimeout(() => setSeekTarget(null), 100);
-  };
+  const handleSeek = useCallback((seconds: number) => {
+    setSeekTarget(seconds);
+    setCurrentTime(seconds);
+    setTimeout(() => {
+      setSeekTarget(null);
+    }, 150);
+  }, []);
 
   const handleTimeUpdate = useCallback((curr: number, dur: number) => {
     setCurrentTime(curr);
-    if (dur > 0) setDuration(dur);
+    if (dur > 0) {
+      setDuration(dur);
+    }
   }, []);
 
-  // Ambient sound synthesizer toggles
-  const handleToggleVinylCrackle = () => {
-    if (vinylCrackle) {
-      ambientSound.stopVinyl();
-      setVinylCrackle(false);
-    } else {
-      ambientSound.startVinyl(0.35);
-      setVinylCrackle(true);
+  // Ambient Sounds Toggles
+  const handleToggleNightRain = useCallback(() => {
+    setNightRain((prev) => {
+      const next = !prev;
+      if (next) {
+        ambientSound.startRain(0.28);
+      } else {
+        ambientSound.stopRain();
+      }
+      return next;
+    });
+  }, []);
+
+  const handleToggleVinylCrackle = useCallback(() => {
+    setVinylCrackle((prev) => {
+      const next = !prev;
+      if (next) {
+        ambientSound.startVinyl(0.18);
+      } else {
+        ambientSound.stopVinyl();
+      }
+      return next;
+    });
+  }, []);
+
+  // Filtered Songs by Search Query and Category
+  const filteredSongs = useMemo(() => {
+    return songs.filter((song) => {
+      const matchesCategory =
+        selectedCategory === 'All' || song.category === selectedCategory;
+      const query = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !query ||
+        song.title.toLowerCase().includes(query) ||
+        song.artist.toLowerCase().includes(query) ||
+        (song.category && song.category.toLowerCase().includes(query));
+      return matchesCategory && matchesSearch;
+    });
+  }, [songs, selectedCategory, searchQuery]);
+
+  // Play a selected song from the playlist
+  const handleSelectSong = (song: Song) => {
+    const idx = songs.findIndex((s) => s.id === song.id);
+    if (idx !== -1) {
+      if (currentIndex === idx) {
+        setIsPlaying(!isPlaying);
+      } else {
+        setCurrentIndex(idx);
+        setCurrentTime(0);
+        setIsPlaying(true);
+      }
     }
   };
 
-  const handleToggleNightRain = () => {
-    if (nightRain) {
-      ambientSound.stopRain();
-      setNightRain(false);
-    } else {
-      ambientSound.startRain(0.4);
-      setNightRain(true);
-    }
-  };
+  const currentSong = songs[currentIndex] || null;
 
   // Add new category directly
   const handleAddCategory = (newCat: string) => {
@@ -270,15 +266,12 @@ export default function App() {
       return;
     }
 
-    // Remove from category list
     setCategories((prev) => prev.filter((c) => c !== categoryToDelete));
 
-    // Reset filter if currently viewing deleted category
     if (selectedCategory === categoryToDelete) {
       setSelectedCategory('All');
     }
 
-    // Update local state immediately
     if (action === 'reassign_to_all') {
       setSongs((prev) =>
         prev.map((s) => (s.category === categoryToDelete ? { ...s, category: 'All' } : s))
@@ -289,7 +282,6 @@ export default function App() {
       showToast(`Category "${categoryToDelete}" aur ${affectedCount} gaane delete kar diye gaye.`);
     }
 
-    // Re-sync with Supabase
     await loadSongsFromSupabase();
   };
 
@@ -306,33 +298,33 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#000000] text-[#ffffff] relative flex flex-col justify-between selection:bg-[#5B0E14] selection:text-[#f1e194] overflow-hidden">
-      {/* 1. Full-Screen Anime Italian Cafe Counter Entrance View Background with Ken Burns Slow Zoom */}
+    <div className="min-h-screen bg-[#000000] text-[#ffffff] relative flex flex-col justify-between selection:bg-[#5B0E14] selection:text-[#f1e194] overflow-x-hidden">
+      {/* 1. Full-Screen Anime Italian Cafe Counter Background */}
       <div className="fixed inset-0 overflow-hidden z-0 pointer-events-none">
         <img
           src={cafeCounterBg}
           alt="Anime Italian Cafe Counter Entrance View"
           className="w-full h-full object-cover object-center animate-ken-burns scale-105"
         />
-        {/* Subtle Dark Glassmorphism / Ambient Vignette Overlay in Deep Black #000000 */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#000000]/80 via-[#000000]/65 to-[#000000]/85 backdrop-blur-[1px]" />
+        {/* Subtle Dark Vignette Overlay in Deep Black #000000 */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#000000]/80 via-[#000000]/70 to-[#000000]/85 backdrop-blur-[1.5px]" />
 
-        {/* Breathing Oven Ember & Warm Glow: Radial lighting pulse expanding and contracting like breathing fire */}
+        {/* Warm Cafe Oven Ember Lighting */}
         <div
-          className="absolute top-[38%] right-[24%] w-80 h-80 sm:w-[450px] sm:h-[450px] rounded-full pointer-events-none animate-oven-breathe mix-blend-screen"
+          className="absolute top-[35%] right-[20%] w-80 h-80 sm:w-[450px] sm:h-[450px] rounded-full pointer-events-none animate-oven-breathe mix-blend-screen"
           style={{
             background:
-              'radial-gradient(circle, rgba(241, 225, 148, 0.45) 0%, rgba(91, 14, 20, 0.35) 40%, rgba(0, 0, 0, 0) 70%)',
+              'radial-gradient(circle, rgba(241, 225, 148, 0.35) 0%, rgba(91, 14, 20, 0.3) 40%, rgba(0, 0, 0, 0) 70%)',
           }}
           aria-hidden="true"
         />
       </div>
 
-      {/* 2. Floating Golden Dust / Embers (#f1e194) & Falling Rain Streaks on Window */}
+      {/* 2. Floating Golden Dust / Embers (#f1e194) & Rain Streaks on Window */}
       <AnimeBackground nightRainActive={nightRain} />
 
       {/* 3. Subtle Film Grain */}
-      <div className="fixed inset-0 grain-overlay z-20 pointer-events-none opacity-30" />
+      <div className="fixed inset-0 grain-overlay z-10 pointer-events-none opacity-25" />
 
       {/* 4. Hidden YouTube Audio Engine with Mobile Keep-Alive & MediaSession */}
       <YouTubeEngine
@@ -351,172 +343,242 @@ export default function App() {
         onPrev={handlePrevTrack}
       />
 
-      {/* 5. Clean Top Bar Header with Supabase status & Night Rain Toggle */}
+      {/* 5. Top Header: Cafe branding, Search bar & Category pills */}
       <Header
         onOpenAdmin={() => setIsAdminOpen(true)}
-        onOpenTapeRack={() => setIsTapeRackOpen(true)}
         onOpenAbout={() => setIsAboutOpen(true)}
         nightRain={nightRain}
         onToggleNightRain={handleToggleNightRain}
         songCount={songs.length}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
       />
 
-      {/* 6. Main Stage: Clean, Unblocked Cafe View & Tactile Player Controls */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6 md:py-10 flex flex-col justify-center items-center z-20 relative">
-        {/* Clean Hero Title */}
-        <div className="text-center mb-4">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-[#ffffff] font-cinzel drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)]">
-            HACKY PIZZA TOWN
-          </h1>
-          <p className="text-xs sm:text-sm text-[#f1e194] font-mono mt-1 tracking-wider drop-shadow-[0_1px_8px_rgba(0,0,0,0.8)]">
-            Garma-garam Pizza, Thandi Hawa aur Dilchasp Dhunein
-          </p>
-
-          {/* Supabase Status Pill Banner */}
-          <div className="mt-2.5 inline-flex items-center gap-2 px-3 py-1 bg-[#000000]/80 border border-[#5B0E14] rounded-full text-[11px] font-mono backdrop-blur-md">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[#ffffff]">Database:</span>
-            {isDbLoading ? (
-              <span className="text-[#f1e194]">Sync ho raha hai...</span>
-            ) : isDbConnected ? (
-              <span className="text-emerald-300 font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                <span>Database Connected ({songs.length} gaane · {categories.length} categories)</span>
+      {/* 6. Main Body: Clean, Scrollable Playlist Table/Feed & Admin Button */}
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6 md:py-8 z-20 relative pb-32">
+        {/* Playlist Feed Header Card */}
+        <div className="bg-gradient-to-r from-[#5B0E14]/40 via-[#000000]/90 to-[#5B0E14]/40 border-2 border-[#5B0E14] rounded-2xl p-4 sm:p-5 mb-5 shadow-[0_15px_35px_rgba(0,0,0,0.85)] backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="p-1.5 rounded-lg bg-[#5B0E14] text-[#f1e194] border border-[#f1e194]/40">
+                <Music2 className="w-4 h-4" />
               </span>
-            ) : isTableMissing ? (
-              <span className="text-[#f1e194] flex items-center gap-1">
-                <AlertCircle className="w-3 h-3 text-[#f1e194]" />
-                <span>Connected · Table pending</span>
+              <h2 className="font-cinzel font-bold text-lg sm:text-xl text-[#ffffff] tracking-wider">
+                SAVED PLAYLIST (SUPABASE CLOUD)
+              </h2>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-mono text-[#f1e194]/80">
+              <span>{filteredSongs.length} gaane available</span>
+              <span>·</span>
+              <span className="text-emerald-400 font-bold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Database Connected</span>
               </span>
-            ) : (
-              <span className="text-emerald-300">Connected</span>
-            )}
+            </div>
           </div>
+
+          {/* Prominent Admin Access Button */}
+          <button
+            onClick={() => setIsAdminOpen(true)}
+            className="px-4 py-2 bg-[#5B0E14] hover:bg-[#78131a] text-[#ffffff] border border-[#f1e194] rounded-xl font-cinzel font-bold text-xs tracking-wider transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(91,14,20,0.5)] active:translate-y-0.5 shrink-0 self-stretch sm:self-auto justify-center"
+          >
+            <Plus className="w-4 h-4 text-[#f1e194]" />
+            <span>Naya Gaana Jodein (Staff Admin) 🍕</span>
+          </button>
         </div>
 
-        {/* Interactive Cinematic Pizza Vinyl Turntable Player Stage */}
-        <div className="w-full max-w-2xl mb-5">
-          <TurntableVinyl
-            currentSong={currentSong}
-            isPlaying={isPlaying}
-            currentTime={currentTime}
-            duration={duration}
-            onPlayPause={handlePlayPause}
-          />
-        </div>
-
-        {/* Database Empty / Friendly Prompt */}
+        {/* Database Empty / Pending Alert */}
         {(isTableEmpty || isTableMissing) && (
-          <div className="w-full max-w-xl mb-4 p-3 bg-[#000000]/85 border border-[#5B0E14] rounded-xl text-xs font-mono text-center backdrop-blur-md">
+          <div className="w-full mb-5 p-3.5 bg-[#000000]/90 border border-[#5B0E14] rounded-xl text-xs font-mono text-center backdrop-blur-md">
             <p className="text-[#f1e194] font-bold">
               {isTableEmpty
                 ? 'Supabase table abhi khali hai · Sample lo-fi gaana chal raha hai'
                 : 'Supabase se connect ho gaya · Pizzeria ka lo-fi track chal raha hai'}
             </p>
-            <p className="text-[#ffffff]/70 text-[10px] mt-0.5">
-              Naye gaane jodne ya categories manage karne ke liye kholein:{' '}
+            <p className="text-[#ffffff]/70 text-[11px] mt-1">
+              Naye gaane jodne ke liye kholein:{' '}
               <button
                 onClick={() => setIsAdminOpen(true)}
                 className="text-[#f1e194] underline hover:text-[#ffffff] font-bold"
               >
-                Kitchen Counter ⚙️ (PIN: 1234)
+                Staff Admin Panel ⚙️ (PIN: 1234)
               </button>
             </p>
           </div>
         )}
 
-        {/* Dynamic Category Vibe Filter Pills with Custom Palette */}
-        <div className="w-full max-w-2xl mb-5 flex items-center justify-center gap-2 overflow-x-auto pb-1 text-xs font-mono no-scrollbar">
-          <button
-            onClick={() => setSelectedCategory('All')}
-            className={`px-3.5 py-1.5 rounded-xl transition-all whitespace-nowrap shrink-0 border ${
-              selectedCategory === 'All'
-                ? 'bg-[#5B0E14] border-[#f1e194] text-[#ffffff] font-bold shadow-[0_0_14px_rgba(241,225,148,0.4)]'
-                : 'bg-[#000000]/75 border-[#5B0E14]/60 text-[#ffffff]/80 hover:text-[#f1e194] hover:border-[#f1e194] backdrop-blur-xs'
-            }`}
-          >
-            Sabhi Gaane ({songs.length})
-          </button>
-          {categories.map((cat) => {
-            const count = songs.filter((s) => s.category === cat).length;
-            return (
+        {/* Playlist Table / Card Feed */}
+        <div className="bg-[#000000]/90 border-2 border-[#5B0E14] rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+          {filteredSongs.length === 0 ? (
+            <div className="text-center py-16 px-4">
+              <Disc className="w-10 h-10 text-[#f1e194]/40 mx-auto mb-3 animate-spin-slow" />
+              <h3 className="font-cinzel font-bold text-base text-[#ffffff] mb-1">
+                Koi Gaana Nahi Mila
+              </h3>
+              <p className="text-xs font-mono text-[#f1e194]/70 mb-4 max-w-sm mx-auto">
+                {searchQuery
+                  ? `"${searchQuery}" ke mutabiq koi gaana nahi mila. Search saaf karein ya naya gaana add karein.`
+                  : 'Abhi koi gaana nahi joda gaya hai. Pehla gaana Staff Admin panel se jodein!'}
+              </p>
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-xl transition-all whitespace-nowrap shrink-0 border ${
-                  selectedCategory === cat
-                    ? 'bg-[#5B0E14] border-[#f1e194] text-[#ffffff] font-bold shadow-[0_0_14px_rgba(241,225,148,0.4)]'
-                    : 'bg-[#000000]/75 border-[#5B0E14]/60 text-[#ffffff]/80 hover:text-[#f1e194] hover:border-[#f1e194] backdrop-blur-xs'
-                }`}
+                onClick={() => setIsAdminOpen(true)}
+                className="px-4 py-2 bg-[#5B0E14] hover:bg-[#78131a] text-[#ffffff] border border-[#f1e194] rounded-xl text-xs font-mono font-bold transition-all shadow"
               >
-                {cat} ({count})
+                + Pehla Gaana Add Karein
               </button>
-            );
-          })}
-        </div>
+            </div>
+          ) : (
+            <div className="divide-y divide-[#5B0E14]/40">
+              {filteredSongs.map((song, idx) => {
+                const isCurrent = currentSong?.id === song.id;
+                const thumb = getYouTubeThumbnail(song.youtubeId);
 
-        {/* Centered Minimalist Player Controls on the Counter */}
-        <div className="w-full max-w-2xl">
-          <PlayerControls
-            currentSong={currentSong}
-            isPlaying={isPlaying}
-            currentTime={currentTime}
-            duration={duration}
-            volume={volume}
-            isMuted={isMuted}
-            vinylCrackle={vinylCrackle}
-            nightRain={nightRain}
-            onPlayPause={handlePlayPause}
-            onNext={handleNextTrack}
-            onPrev={handlePrevTrack}
-            onSeek={handleSeek}
-            onVolumeChange={(v) => setVolume(v)}
-            onToggleMute={() => setIsMuted(!isMuted)}
-            onToggleVinylCrackle={handleToggleVinylCrackle}
-            onToggleNightRain={handleToggleNightRain}
-            onOpenTapeRack={() => setIsTapeRackOpen(true)}
-            hasSongs={songs.length > 0}
-          />
+                return (
+                  <div
+                    key={song.id}
+                    onClick={() => handleSelectSong(song)}
+                    className={`p-3 sm:p-4 flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                      isCurrent
+                        ? 'bg-[#5B0E14]/45 border-l-4 border-l-[#f1e194] shadow-[inset_0_0_20px_rgba(241,225,148,0.15)]'
+                        : 'hover:bg-[#5B0E14]/25 hover:border-l-4 hover:border-l-[#f1e194]/60'
+                    }`}
+                  >
+                    {/* Left: Track Index, Thumbnail, Title & Artist */}
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                      {/* Track Index or Animated Waveform */}
+                      <div className="w-6 text-center shrink-0">
+                        {isCurrent && isPlaying ? (
+                          <div className="flex items-end justify-center gap-0.5 h-4">
+                            <span className="w-1 bg-[#f1e194] wave-bar-1 rounded-full" />
+                            <span className="w-1 bg-[#f1e194] wave-bar-2 rounded-full" />
+                            <span className="w-1 bg-[#f1e194] wave-bar-3 rounded-full" />
+                          </div>
+                        ) : (
+                          <span
+                            className={`font-mono text-xs ${
+                              isCurrent ? 'text-[#f1e194] font-bold' : 'text-[#ffffff]/50'
+                            }`}
+                          >
+                            {(idx + 1).toString().padStart(2, '0')}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Small Thumbnail */}
+                      <div className="relative w-12 h-12 rounded-lg bg-[#1c0507] border border-[#5B0E14] overflow-hidden shrink-0 group shadow">
+                        <img
+                          src={thumb}
+                          alt={song.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                        <div
+                          className={`absolute inset-0 flex items-center justify-center bg-[#000000]/50 transition-opacity ${
+                            isCurrent ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                          }`}
+                        >
+                          {isCurrent && isPlaying ? (
+                            <Pause className="w-4 h-4 text-[#f1e194] fill-current" />
+                          ) : (
+                            <Play className="w-4 h-4 text-[#f1e194] fill-current ml-0.5" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Title & Artist */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4
+                            className={`font-bold text-sm sm:text-base truncate leading-tight ${
+                              isCurrent
+                                ? 'text-[#ffffff] drop-shadow-[0_0_10px_rgba(241,225,148,0.5)]'
+                                : 'text-[#ffffff] group-hover:text-[#f1e194]'
+                            }`}
+                          >
+                            {song.title}
+                          </h4>
+                          {isCurrent && (
+                            <span className="text-[10px] font-mono font-bold bg-[#f1e194] text-[#000000] px-1.5 py-0.2 rounded shrink-0">
+                              NOW PLAYING
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs font-mono text-[#f1e194]/80 truncate mt-0.5">
+                          {song.artist || 'Hacky Pizza Lounge'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Right: Category Badge & Play Button */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      {/* Mood / Category Badge */}
+                      <span className="hidden sm:inline-block px-2.5 py-1 bg-[#5B0E14] text-[#f1e194] border border-[#f1e194]/30 rounded-md text-[11px] font-mono font-bold">
+                        {song.category || 'All'}
+                      </span>
+
+                      {/* Quick Play/Pause Action Icon */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectSong(song);
+                        }}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                          isCurrent && isPlaying
+                            ? 'bg-[#f1e194] text-[#000000] shadow-[0_0_10px_rgba(241,225,148,0.6)]'
+                            : 'bg-[#000000]/70 hover:bg-[#5B0E14] text-[#f1e194] border border-[#5B0E14] hover:border-[#f1e194]'
+                        }`}
+                        title={isCurrent && isPlaying ? 'Roko' : 'Play Karein'}
+                      >
+                        {isCurrent && isPlaying ? (
+                          <Pause className="w-3.5 h-3.5 fill-current" />
+                        ) : (
+                          <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </main>
 
-      {/* Clean Footer with Discreet Staff Admin Gear Link */}
-      <footer className="border-t border-[#5B0E14]/40 bg-[#000000]/90 backdrop-blur-md py-3.5 px-6 z-20 text-[11px] font-mono text-[#ffffff]/60 flex flex-col sm:flex-row items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="font-cinzel text-[#ffffff] font-bold">Hacky Pizza Town</span>
-          <span aria-hidden="true">·</span>
-          <span className="text-[#f1e194]">Cafe &amp; Lo-Fi Lounge</span>
-          <span aria-hidden="true">·</span>
-          <span className="text-emerald-400 flex items-center gap-1">
-            <Database className="w-3 h-3" />
-            <span>Database Connected</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsAdminOpen(true)}
-            className="hover:text-[#f1e194] transition-colors flex items-center gap-1 text-[#ffffff]/70 hover:underline"
-            title="Kitchen Staff Admin (PIN: 1234)"
-          >
-            <span>⚙️ Staff Admin (PIN: 1234)</span>
-          </button>
-          <span aria-hidden="true">·</span>
-          <span className="flex items-center gap-1 text-[#f1e194]">
-            <Sparkles className="w-3 h-3 text-[#f1e194]" />
-            <span>Stereo Hi-Fi</span>
-          </span>
-        </div>
-      </footer>
+      {/* 7. Bottom Sticky / Fixed Mini Player Bar */}
+      <PlayerControls
+        currentSong={currentSong}
+        isPlaying={isPlaying}
+        currentTime={currentTime}
+        duration={duration}
+        volume={volume}
+        isMuted={isMuted}
+        vinylCrackle={vinylCrackle}
+        nightRain={nightRain}
+        onPlayPause={handlePlayPause}
+        onNext={handleNextTrack}
+        onPrev={handlePrevTrack}
+        onSeek={handleSeek}
+        onVolumeChange={(v) => setVolume(v)}
+        onToggleMute={() => setIsMuted(!isMuted)}
+        onToggleVinylCrackle={handleToggleVinylCrackle}
+        onToggleNightRain={handleToggleNightRain}
+        hasSongs={songs.length > 0}
+      />
 
       {/* Floating Notification Toast */}
       {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#000000]/95 border border-[#f1e194] text-[#f1e194] text-xs font-mono px-4 py-2.5 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.95)] flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-200 max-w-md text-center">
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-[#000000]/95 border border-[#f1e194] text-[#f1e194] text-xs font-mono px-4 py-2.5 rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.95)] flex items-center gap-2 animate-in slide-in-from-bottom-2 duration-200 max-w-md text-center">
           <span className="w-2 h-2 rounded-full bg-[#f1e194] animate-ping shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Modals & Drawers */}
+      {/* Modals */}
       <TapeRackDrawer
         isOpen={isTapeRackOpen}
         onClose={() => setIsTapeRackOpen(false)}
@@ -526,7 +588,7 @@ export default function App() {
         onSelectSong={handleSelectSong}
         categories={categories}
         selectedCategory={selectedCategory}
-        onSelectCategory={(c) => setSelectedCategory(c)}
+        onSelectCategory={setSelectedCategory}
         onOpenAdmin={() => setIsAdminOpen(true)}
       />
 
