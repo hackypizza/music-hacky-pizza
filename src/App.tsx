@@ -4,7 +4,7 @@ import { INITIAL_PLAYLIST, DEFAULT_CATEGORIES } from './data/initialPlaylist';
 import { ambientSound } from './utils/ambientSound';
 import Header from './components/Header';
 import AnimeBackground from './components/AnimeBackground';
-import SteamingPizzaEspresso from './components/SteamingPizzaEspresso';
+import TurntableVinyl from './components/TurntableVinyl';
 import PlayerControls from './components/PlayerControls';
 import TapeRackDrawer from './components/TapeRackDrawer';
 import AdminModal from './components/AdminModal';
@@ -394,9 +394,15 @@ export default function App() {
           </div>
         </div>
 
-        {/* Steaming Espresso & Pizza Slice Vapor Animation on Counter */}
-        <div className="mb-4">
-          <SteamingPizzaEspresso />
+        {/* Interactive Cinematic Pizza Vinyl Turntable Player Stage */}
+        <div className="w-full max-w-2xl mb-5">
+          <TurntableVinyl
+            currentSong={currentSong}
+            isPlaying={isPlaying}
+            currentTime={currentTime}
+            duration={duration}
+            onPlayPause={handlePlayPause}
+          />
         </div>
 
         {/* Database Empty / Friendly Prompt */}

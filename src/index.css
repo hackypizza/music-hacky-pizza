@@ -213,4 +213,158 @@
   border-color: #f1e194;
 }
 
+/* ========================================================
+   CINEMATIC PIZZA VINYL PLAYER ANIMATIONS
+   ======================================================== */
+
+/* 1. Continuous 360-degree Pizza Vinyl Rotation (12s linear) */
+@keyframes spinPizza {
+  from {
+    transform: rotate(0deg) translateZ(0);
+  }
+  to {
+    transform: rotate(360deg) translateZ(0);
+  }
+}
+
+.animate-spin-pizza {
+  animation: spinPizza 12s linear infinite;
+  will-change: transform;
+}
+
+/* 2. Idle / Paused Gentle Breathing & Floating Hover */
+@keyframes pizzaFloatIdle {
+  0%, 100% {
+    transform: translateY(0px) scale(1) translateZ(0);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.012) translateZ(0);
+  }
+}
+
+.animate-pizza-idle {
+  animation: pizzaFloatIdle 4s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* 3. Dynamic Topping Drop & Spring-Bounce Keyframes */
+@keyframes toppingDrop {
+  0% {
+    transform: translateY(-40px) scale(0.2) rotate(-30deg) translateZ(0);
+    opacity: 0;
+  }
+  55% {
+    transform: translateY(4px) scale(1.18) rotate(10deg) translateZ(0);
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(-2px) scale(0.94) rotate(-3deg) translateZ(0);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg) translateZ(0);
+    opacity: 1;
+  }
+}
+
+.topping-drop-1 {
+  animation: toppingDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s both;
+}
+.topping-drop-2 {
+  animation: toppingDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.14s both;
+}
+.topping-drop-3 {
+  animation: toppingDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.22s both;
+}
+.topping-drop-4 {
+  animation: toppingDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
+}
+.topping-drop-5 {
+  animation: toppingDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.38s both;
+}
+.topping-drop-6 {
+  animation: toppingDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.46s both;
+}
+
+/* 4. Wood-Fired Oven Ember & Perimeter Glow Aura */
+@keyframes pizzaEmberGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 16px rgba(91, 14, 20, 0.7)) drop-shadow(0 0 28px rgba(241, 225, 148, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 26px rgba(241, 225, 148, 0.6)) drop-shadow(0 0 46px rgba(91, 14, 20, 0.85));
+  }
+}
+
+.animate-pizza-ember {
+  animation: pizzaEmberGlow 3.5s ease-in-out infinite;
+}
+
+/* 5. Continuous Rising Steam / Smoke Clouds above Hot Pizza */
+@keyframes pizzaSteamPuff1 {
+  0% {
+    transform: translateY(0) scaleX(0.7) scaleY(0.7) rotate(0deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.75;
+  }
+  60% {
+    transform: translateY(-38px) scaleX(1.4) scaleY(1.3) rotate(8deg);
+    opacity: 0.45;
+  }
+  100% {
+    transform: translateY(-75px) scaleX(2.1) scaleY(1.8) rotate(-10deg);
+    opacity: 0;
+  }
+}
+
+@keyframes pizzaSteamPuff2 {
+  0% {
+    transform: translateY(0) scaleX(0.8) scaleY(0.8) rotate(0deg);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.85;
+  }
+  65% {
+    transform: translateY(-46px) scaleX(1.5) scaleY(1.5) rotate(-12deg);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(-90px) scaleX(2.3) scaleY(2) rotate(14deg);
+    opacity: 0;
+  }
+}
+
+@keyframes pizzaSteamPuff3 {
+  0% {
+    transform: translateY(0) scaleX(0.6) scaleY(0.6);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.65;
+  }
+  60% {
+    transform: translateY(-42px) scaleX(1.6) scaleY(1.4) rotate(6deg);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-80px) scaleX(2.5) scaleY(1.9) rotate(-8deg);
+    opacity: 0;
+  }
+}
+
+.animate-pizza-steam-1 {
+  animation: pizzaSteamPuff1 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-pizza-steam-2 {
+  animation: pizzaSteamPuff2 3.8s cubic-bezier(0.4, 0, 0.2, 1) infinite 0.7s;
+}
+
+.animate-pizza-steam-3 {
+  animation: pizzaSteamPuff3 4.2s cubic-bezier(0.4, 0, 0.2, 1) infinite 1.4s;
+}
+
+
 
